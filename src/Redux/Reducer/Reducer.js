@@ -11,11 +11,23 @@ switch (action.type) {
       ...state,
       Data: [...state.Data, action.payload],
     };
-    case Type.DELETE_DATA :
-        return {
-          ...state,
-          Data: action.payload,
-        };
+  case Type.DELETE_DATA:
+    return {
+      ...state,
+      Data: action.payload,
+    };
+  case Type.EDIT_DATA:
+    const UserDetails = state.Data.map((user,index) => {
+      if (index === action.payload.id) {
+        return action.payload.data;
+      } else {
+        return user;
+      }
+    });
+    return {
+      ...state,
+      Data: UserDetails,
+    };
   default:
     return state;
 }

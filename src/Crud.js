@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Row,
   Col,
@@ -11,10 +11,15 @@ import {
   Checkbox,
 } from "antd";
 import { UserOutlined, MailOutlined, MobileOutlined } from "@ant-design/icons";
-import "antd/dist/antd.css";
-const Crud = () => {
+import { connect } from "react-redux";
+import { CreateData, DeleteData, EditData } from "./Redux/Action/Action";
+
+const CrudRedux = (props) => {
+  const { list, dispatch } = props;
+  const [errors, setError] = React.useState({});
+  const [editedIndex, setIndex] = React.useState(null);
   const [tableData, setTableData] = React.useState([]);
-  const [allData, setAllData] = React.useState({
+  const initialState = {
     firstName: "",
     middleName: "",
     lastName: "",
@@ -24,102 +29,18 @@ const Crud = () => {
     city: "Surat",
     editid: "",
     hobbies: [],
-    options: [
-      { label: "Cricket", value: false },
-      { label: "Reading", value: false },
-      { label: "Movies", value: false },
-    ],
-  });
-
-  // localStorage.setItem('UserData', JSON.stringify(tableData))
-  const handleChange = (event) => {
-    setAllData({ ...allData, [event.target.name]: event.target.value });
+  };
+  const [allData, setAllData] = React.useState(initialState);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setAllData({ ...allData, [name]: value });
   };
 
-  const getUserData = () => {
-    const localStorageData = JSON.parse(localStorage.getItem("UserData"));
-    setTableData(localStorageData);
-  };
-  React.useEffect(() => {
-    getUserData();
-  }, []);
-
-  const handleSubmit = () => {
-    let userData = [];
-    if (tableData) {
-      userData = tableData;
-    } else {
-      userData = [];
-    }
-    if (allData.editid === "") {
-      const UserDataObj = {
-        firstName: allData.firstName,
-        middleName: allData.middleName,
-        lastName: allData.lastName,
-        email: allData.email,
-        mobile: allData.mobile,
-        gender: allData.gender,
-        city: allData.city,
-        hobbies: allData.hobbies,
-      };
-      userData.push(UserDataObj);
-      localStorage.setItem("UserData", JSON.stringify(userData));
-      setTableData(userData);
-    } else {
-      const UserDataObj = {
-        firstName: allData.firstName,
-        middleName: allData.middleName,
-        lastName: allData.lastName,
-        email: allData.email,
-        mobile: allData.mobile,
-        gender: allData.gender,
-        city: allData.city,
-        hobbies: allData.hobbies,
-      };
-      userData[allData.editid] = UserDataObj;
-      localStorage.setItem("UserData", JSON.stringify(userData));
-      setTableData(userData);
-    }
-    setAllData({
-      firstName: "",
-      middleName: "",
-      lastName: "",
-      email: "",
-      mobile: "",
-      gender: "",
-      city: "Surat",
-      editid: "",
-      hobbies: [],
-      options: allData.options,
-    });
-    getUserData();
-  };
-
-  const handleEdit = (index) => {
-    const Data = JSON.parse(localStorage.getItem("UserData"));
-    const selectedData = Data[index];
-    setAllData({
-      firstName: selectedData.firstName,
-      middleName: selectedData.middleName,
-      lastName: selectedData.lastName,
-      email: selectedData.email,
-      mobile: selectedData.mobile,
-      gender: selectedData.gender,
-      city: selectedData.city,
-      hobbies: selectedData.hobbies,
-      editid: index,
-      options: allData.options,
-    });
-  };
-
-  const handleDelete = (index) => {
-    const deleteData = JSON.parse(localStorage.getItem("UserData"));
-    deleteData.splice(index, 1);
-    setTableData({
-      data: localStorage.setItem("UserData", JSON.stringify(deleteData)),
-    });
-    getUserData();
-  };
+  const options = [
+    { label: "Cricket", value: false },
+    { label: "Reading", value: false },
+    { label: "Movies", value: false },
+  ];
   const onChange = (e) => {
     let option = allData.hobbies;
     if (e.target.checked === true) {
@@ -134,6 +55,120 @@ const Crud = () => {
     setAllData({ ...allData, hobbies: [...option] });
   };
 
+  const validation = (name, value, number) => {
+    const emailRegx = /^[\w-]+@([\w-]+\.)+[\w-]{2,4}$/gi;
+    const mobile = /^(\+\d{1,3}[- ]?)?\d{10}$/;
+    const da = /0{5,}/;
+    switch (name) {
+      case "firstName":
+        if (!value) {
+          return "Please Enter First Name!!";
+        } else {
+          return "";
+        }
+      case "middleName":
+        if (!value) {
+          return "Please Enter Middle Name!!";
+        } else {
+          return "";
+        }
+      case "lastName":
+        if (!value) {
+          return "please Enter Last Name!!";
+        } else {
+          return "";
+        }
+      case "email":
+        if (!emailRegx.test(value)) {
+          return "please Enter valid email";
+        } else {
+          return "";
+        }
+      case "mobile":
+        if (!mobile.test(value)) {
+          return "please enter valid Mobile";
+        } else {
+          return "";
+        }
+      case "gender":
+        if (!value) {
+          return "please Select Gender";
+        } else {
+          return "";
+        }
+      case "hobbies":
+        if (!value) {
+          return "Please Enter Valid Hobbies";
+        } else {
+          return "";
+        }
+    }
+  };
+  React.useEffect(() => {
+    setTableData(list?.Data);
+  }, [list]);
+
+  const handleSubmit = () => {
+    // let userData = [];
+    const userData = {
+      firstName: allData.firstName,
+      middleName: allData.middleName,
+      lastName: allData.lastName,
+      email: allData.email,
+      mobile: allData.mobile,
+      hobbies: allData.hobbies,
+      gender: allData.gender,
+      city: allData.city,
+    };
+    let allErrors = {};
+    // if (tableData) {
+    //   userData = tableData;
+    // } else {
+    //   userData = [];
+    // }
+    Object.keys(userData).forEach((key) => {
+      const error = validation(key, userData[key]);
+      if (error && error.length) {
+        allErrors[key] = error;
+      }
+    });
+
+    if (Object.keys(allErrors).length) {
+      return setError(allErrors);
+    } else {
+      if (editedIndex === null) {
+        dispatch(CreateData(allData));
+        setIndex(null);
+        setAllData({});
+      } else {
+        // userDetail.id = data.length + 1;
+        dispatch(EditData({ data: allData, id: editedIndex }));
+        setIndex(null);
+        setAllData({});
+      }
+    }
+    setError({});
+    //   if (editedIndex === null) {
+    //     setIndex(null);
+    //     dispatch(CreateData(allData));
+    //     validation();
+    //   } else {
+    //     dispatch(EditData({ data: allData, id: editedIndex }));
+    //     setIndex(null);
+    //     validation();
+    //   }
+    //   setAllData(initialState);
+    // };
+  };
+  const handleEdit = (index) => {
+    setAllData(list.Data[index]);
+    setIndex(index);
+  };
+  const handleDelete = (index) => {
+    tableData.splice(index, 1);
+    setTableData(tableData);
+    dispatch(DeleteData(tableData));
+  };
   const columns = [
     {
       title: "Firstname",
@@ -177,10 +212,21 @@ const Crud = () => {
     },
     {
       title: "Action",
+      dataIndex: "id",
       render: (text, record, index) => (
         <div>
-          <button onClick={() => handleEdit(index)}>Edit</button>
-          <button onClick={() => handleDelete(index)}>Delete</button>
+          <button
+            onClick={() => handleEdit(index)}
+            style={{ marginRight: "10px", padding: "0px 10px" }}
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => handleDelete(index)}
+            style={{ padding: "0px 10px" }}
+          >
+            Delete
+          </button>
         </div>
       ),
     },
@@ -192,8 +238,23 @@ const Crud = () => {
           <Col span={8} />
           <Col span={8}>
             <Card className="cardtop">
-              <h1 className="h2login">Register</h1>
-              <p>
+              <h1
+                className="h2login"
+                style={{
+                  fontWeight: "700",
+                  fontSize: "24px",
+                  textAlign: "center",
+                }}
+              >
+                Register
+              </h1>
+              <p
+                style={{
+                  fontWeight: "700",
+                  fontSize: "16px",
+                  textAlign: "center",
+                }}
+              >
                 <b>Create your account</b>
               </p>
               <Form>
@@ -202,18 +263,20 @@ const Crud = () => {
                     name="firstName"
                     placeholder="Enter Your FirstName"
                     addonBefore={<UserOutlined />}
-                    value={allData.firstName}
+                    value={allData?.firstName}
                     onChange={(e) => handleChange(e)}
                   />
+                  <span className="validation">{errors.firstName}</span>
                 </Form.Item>
                 <Form.Item>
                   <Input
                     name="middleName"
                     placeholder="Enter Your MiddleName"
                     addonBefore={<UserOutlined />}
-                    value={allData.middleName}
+                    value={allData?.middleName}
                     onChange={handleChange}
                   />
+                  <span className="validation">{errors.middleName}</span>
                 </Form.Item>
                 <Form.Item>
                   <Input
@@ -223,6 +286,7 @@ const Crud = () => {
                     value={allData.lastName}
                     onChange={handleChange}
                   />
+                  <span className="validation">{errors.lastName}</span>
                 </Form.Item>
                 <Form.Item>
                   <Input
@@ -232,6 +296,7 @@ const Crud = () => {
                     value={allData.email}
                     onChange={handleChange}
                   />
+                  <span className="validation">{errors.email}</span>
                 </Form.Item>
                 <Form.Item>
                   <Input
@@ -242,10 +307,11 @@ const Crud = () => {
                     value={allData.mobile}
                     onChange={handleChange}
                   />
+                  <span className="validation">{errors.mobile}</span>
                 </Form.Item>
                 <Form.Item label="Hobbies">
                   <Row>
-                    {allData.options.map((data, id) => (
+                    {options.map((data, id) => (
                       <Col span={8} key={id}>
                         <Checkbox
                           name={`${data.label}`}
@@ -256,7 +322,7 @@ const Crud = () => {
                             onChange(e);
                           }}
                           checked={
-                            allData.hobbies.length > 0 &&
+                            allData?.hobbies?.length > 0 &&
                             allData.hobbies.includes(data.label)
                           }
                         >
@@ -265,6 +331,7 @@ const Crud = () => {
                       </Col>
                     ))}
                   </Row>
+                  <span className="validation">{errors.hobbies}</span>
                 </Form.Item>
                 <h3>Gender</h3>
                 <Radio.Group
@@ -278,7 +345,9 @@ const Crud = () => {
                   <Radio value="male">Male</Radio>
                   <Radio value="female">Female</Radio>
                   <Radio value="other">Other</Radio>
-                </Radio.Group>
+                </Radio.Group>{" "}
+                <br />
+                <span className="validation">{errors.gender}</span>
                 <h3 style={{ marginTop: "10px" }}>City</h3>
                 <select
                   name="city"
@@ -295,8 +364,10 @@ const Crud = () => {
                   <option>Ahmedabad</option>
                   <option>Bharuch</option>
                 </select>
+                <span className="validation">{errors.city}</span>
                 <Form.Item>
                   <Button
+                    style={{ marginTop: "15px" }}
                     className="btn-md buttonsubmitlogin"
                     htmlType="submit"
                     type="primary"
@@ -318,12 +389,15 @@ const Crud = () => {
             alignItems: "center",
           }}
         >
-          <Table columns={columns} dataSource={tableData} />
+          <Table columns={columns} dataSource={[...tableData] || []} />
         </div>
       </div>
-      ;
     </>
   );
 };
-
-export default Crud;
+const mapStateToProps = (state) => {
+  return {
+    list: state.list,
+  };
+};
+export default connect(mapStateToProps)(CrudRedux);
